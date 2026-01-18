@@ -27,11 +27,28 @@ else:
 
 @app.route('/', methods=['GET'])
 def verify():
-    # Facebook sẽ gọi vào đây để xác minh server của bạn còn sống và đúng là của bạn
-    if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.challenge"):
-        if not request.args.get("hub.verify_token") == VERIFY_TOKEN:
-            return "Verification token mismatch", 403
-        return request.args["hub.challenge"], 200
+    # 1. Lấy tham số từ Facebook gửi sang
+    mode = request.args.get("hub.mode")
+    token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+
+    # 2. IN LOG RA MÀN HÌNH ĐỂ KIỂM TRA (Quan trọng)
+    # Dùng file=sys.stdout để ép Render hiện log ngay lập tức
+    print(f"=== CÓ YÊU CẦU GET MỚI ===", file=sys.stdout)
+    print(f"Mode nhận được: {mode}", file=sys.stdout)
+    print(f"Token nhận được: {token}", file=sys.stdout)
+    print(f"Token mong đợi: {VERIFY_TOKEN}", file=sys.stdout)
+
+    # 3. So sánh và trả lời
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        print("=> XÁC THỰC THÀNH CÔNG! Đang trả về challenge.", file=sys.stdout)
+        return challenge, 200
+    
+    if mode == "subscribe" and token != VERIFY_TOKEN:
+        print("=> LỖI: Sai Token!", file=sys.stdout)
+        return "Verification token mismatch", 403
+
+    print("=> Không phải yêu cầu xác thực (Truy cập thường).", file=sys.stdout)
     return "Hello world", 200
 
 @app.route('/', methods=['POST'])
