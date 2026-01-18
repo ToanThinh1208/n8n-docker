@@ -1,7 +1,10 @@
 from flask import Flask, request
 import requests
 import os
-import google.generativeai as genai
+from google import genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -12,19 +15,15 @@ PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 # API Key của Gemini
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Cấu hình Gemini
+# Cấu hình Gemini Client
+client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    # Sử dụng model gemini-3.0-pro (hoặc model phù hợp có sẵn tại thời điểm đó)
-    # Nếu không chạy được, hãy kiểm tra lại tên model chính xác
     try:
-        model = genai.GenerativeModel('gemini-3.0-pro')
+        client = genai.Client(api_key=GEMINI_API_KEY)
     except Exception as e:
-        print(f"Error loading model: {e}")
-        model = None
+        print(f"Error configuring Gemini client: {e}")
 else:
     print("WARNING: GEMINI_API_KEY not found in environment variables.")
-    model = None
 
 @app.route('/', methods=['GET'])
 def verify():
@@ -50,16 +49,19 @@ def webhook():
                     if message_text:
                         # Logic xử lý tin nhắn với Gemini
                         response_text = ""
-                        if model:   
+                        if client:
                             try:
-                                chat = model.start_chat(history=[])
-                                response = chat.send_message(message_text)
+                                # Sử dụng model model mới nhất user yêu cầu
+                                response = client.models.generate_content(
+                                    model='gemini-3-flash-preview',
+                                    contents=message_text
+                                )
                                 response_text = response.text
                             except Exception as e:
                                 response_text = f"Xin lỗi, tôi đang gặp sự cố khi liên hệ với Gemini: {str(e)}"
                                 print(f"Gemini Error: {e}")
                         else:
-                            response_text = "Chưa cấu hình Gemini API Key hoặc Model."
+                            response_text = "Chưa cấu hình Gemini API Key."
 
                         send_message(sender_id, response_text)
                         
